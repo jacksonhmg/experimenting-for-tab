@@ -1,0 +1,34 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run",
+      "type": "lightcode",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/Build/Products/Debug-iphoneos/WhisperBoard.app",
+      "buildCommand": "xcodebuild -workspace WhisperBoard.xcworkspace -scheme WhisperBoard -configuration Debug -derivedDataPath ./build -sdk iphoneos -allowProvisioningUpdates",
+      "appBundleId": "me.igortarasenko.Whisperboard"
+    },
+    {
+      "name": "Attach",
+      "type": "lightcode",
+      "request": "attach",
+      "program": "${workspaceFolder}/build/Build/Products/Debug-iphoneos/WhisperBoard.app",
+      "buildCommand": "xcodebuild -workspace WhisperBoard.xcworkspace -scheme WhisperBoard -configuration Debug -derivedDataPath ./build -sdk iphoneos -allowProvisioningUpdates",
+      "appBundleId": "me.igortarasenko.Whisperboard"
+    },
+    {
+      "name": "LLDB Launch",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/Build/Products/Debug-iphonesimulator/WhisperBoard.app",
+      "preLaunchTask": "build",
+      "cwd": "${workspaceFolder}",
+      "iosBundleId": "me.igortarasenko.Whisperboard",
+      "iosTarget": "4CD877BE-99FF-47FA-926D-63CAE7B65C84"
+    }
+  ]
+}

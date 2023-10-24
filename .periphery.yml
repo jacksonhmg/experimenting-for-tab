@@ -1,0 +1,14 @@
+schemes:
+  - WhisperBoard
+targets:
+  - WhisperBoardKit
+  - WhisperBoard
+  - ShareExtension
+verbose: true
+workspace: WhisperBoard.xcworkspace
+report_exclude:
+  - App/Derived/*
+  - AppKit/Derived/*
+  - Tuist/*
+  - build/*
+  - AppKit/Sources/Clients/Secrets.swift
