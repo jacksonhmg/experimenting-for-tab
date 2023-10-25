@@ -1,4 +1,58 @@
 import Foundation
+import UserNotifications
+import UIKit
+
+
+class NotificationBanner: UIView {
+
+    private let label: UILabel = {
+        let label = UILabel()
+        label.numberOfLines = 0
+        label.font = UIFont.systemFont(ofSize: 14)
+        label.textColor = .white
+        return label
+    }()
+
+    init(message: String) {
+        super.init(frame: CGRect(x: 0, y: -60, width: UIScreen.main.bounds.width, height: 60))
+        backgroundColor = UIColor.red
+        label.text = message
+
+        addSubview(label)
+        label.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
+            label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
+            label.centerYAnchor.constraint(equalTo: centerYAnchor)
+        ])
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func show(on view: UIView) {
+        view.addSubview(self)
+        UIView.animate(withDuration: 0.5, animations: {
+            self.frame.origin.y = 0
+        }) { _ in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                self.hide()
+            }
+        }
+    }
+
+    func hide() {
+        UIView.animate(withDuration: 0.5, animations: {
+            self.frame.origin.y = -60
+        }) { _ in
+            self.removeFromSuperview()
+        }
+    }
+}
+
+
+
 
 // MARK: - LocalTranscriptionError
 
@@ -17,12 +71,40 @@ final class LocalTranscriptionWorkExecutor: TranscriptionWorkExecutor {
     self.updateTranscription = updateTranscription
   }
   
+  func loadEnvironmentKeys() -> [String: String] {
+      guard let filePath = Bundle.main.path(forResource: ".env", ofType: nil) else {
+          fatalError("Couldn't find file '.env'")
+      }
+      
+      let keys: [String: String]
+      do {
+          let contents = try String(contentsOfFile: filePath)
+          keys = contents
+              .split(separator: "\n")
+              .map(String.init)
+              .filter { !$0.hasPrefix("#") && !$0.isEmpty }
+              .reduce(into: [String: String]()) { (result, keyValueString) in
+                  let keyValueArray = keyValueString.split(separator: "=", maxSplits: 1)
+                  if keyValueArray.count == 2 {
+                      result[String(keyValueArray[0])] = String(keyValueArray[1])
+                  }
+              }
+      } catch {
+          fatalError("Error loading .env - \(error.localizedDescription)")
+      }
+      
+      return keys
+  }
+  
   func sendTranscriptToGPT(transcript: String, completion: @escaping (Result<String, Error>) -> Void) {
       // Define API URL and request headers
+    let envKeys = loadEnvironmentKeys()
+    let apiKey = envKeys["OPENAI_API_KEY"]
+
     let openAIApiURL = URL(string: "https://api.openai.com/v1/chat/completions")!
       var request = URLRequest(url: openAIApiURL)
       request.httpMethod = "POST"
-      request.addValue("Bearer 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", forHTTPHeaderField: "Authorization")
+      request.addValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
       request.addValue("application/json", forHTTPHeaderField: "Content-Type")
 
       // Define your prompt
@@ -113,7 +195,8 @@ final class LocalTranscriptionWorkExecutor: TranscriptionWorkExecutor {
               switch result {
               case .success(let content):
                   print("Received response: \(content)")
-                  // Handle the response, update UI, etc.
+                  let banner = NotificationBanner(message: content)
+                  banner.show(on: UIApplication.shared.windows.first { $0.isKeyWindow }!)
               case .failure(let error):
                   print("Error occurred: \(error.localizedDescription)")
                   // Handle the error, show error message to user, etc.
