@@ -16,6 +16,51 @@ final class LocalTranscriptionWorkExecutor: TranscriptionWorkExecutor {
   init(updateTranscription: @escaping (_ transcription: Transcription) -> Void) {
     self.updateTranscription = updateTranscription
   }
+  
+  func sendTranscriptToGPT(transcript: String) {
+      // Define API URL and request headers
+      let openAIApiURL = URL(string: "https://api.openai.com/v1/engines/gpt-3.5-turbo/completions")!
+      var request = URLRequest(url: openAIApiURL)
+      request.httpMethod = "POST"
+      request.addValue("Bearer YOUR_OPENAI_API_KEY", forHTTPHeaderField: "Authorization")
+      request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+
+      // Define your prompt
+      let prompt = [
+          "messages": [
+              ["role": "system", "content": "You are tasked with extracting tasks from conversation."],
+              ["role": "user", "content": "I really need to go grocery shopping tomorrow, I'm not sure how I'll get there. How has your day been? Man that's really cool, I miss Florida hey. Yeah I should come soon."],
+              ["role": "assistant", "content": "Do you want to set a reminder to get groceries?"],
+              ["role": "user", "content": "Yeah I'd love to learn more about quantum computing, I just always forget. Do you have any book recommendations? Oh that's awesome, yeah I'll check that out."],
+              ["role": "assistant", "content": "Would you like to learn more about quantum computing?"],
+              ["role": "user", "content": transcript]
+          ]
+      ]
+
+      // Convert prompt to JSON data
+      let jsonData = try? JSONSerialization.data(withJSONObject: prompt)
+
+      request.httpBody = jsonData
+
+      // Create a task to perform the API call
+      let task = URLSession.shared.dataTask(with: request) { (data, response, error) in
+          if let error = error {
+              print("Error occurred: \(error.localizedDescription)")
+              return
+          }
+          
+          if let data = data {
+              let jsonResponse = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any]
+              if let messageContent = jsonResponse?["choices"] as? [[String: Any]], let firstChoice = messageContent.first, let message = firstChoice["message"] as? [String: String], let content = message["content"] {
+                  print(content)
+              }
+          }
+      }
+
+      // Start the task
+      task.resume()
+  }
+
 
   func processTask(_ task: TranscriptionTask, updateTask: @escaping (TranscriptionTask) -> Void) async {
     var task: TranscriptionTask = task {
@@ -47,6 +92,7 @@ final class LocalTranscriptionWorkExecutor: TranscriptionWorkExecutor {
         case let .finished(segments):
           transcription.segments = segments
           transcription.status = .done(Date())
+          sendTranscriptToGPT(transcription.text)
         }
       }
     } catch {
