@@ -3,53 +3,7 @@ import UserNotifications
 import UIKit
 
 
-class NotificationBanner: UIView {
 
-    private let label: UILabel = {
-        let label = UILabel()
-        label.numberOfLines = 0
-        label.font = UIFont.systemFont(ofSize: 14)
-        label.textColor = .white
-        return label
-    }()
-
-    init(message: String) {
-        super.init(frame: CGRect(x: 0, y: -60, width: UIScreen.main.bounds.width, height: 60))
-        backgroundColor = UIColor.red
-        label.text = message
-
-        addSubview(label)
-        label.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
-            label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
-            label.centerYAnchor.constraint(equalTo: centerYAnchor)
-        ])
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    func show(on view: UIView) {
-        view.addSubview(self)
-        UIView.animate(withDuration: 0.5, animations: {
-            self.frame.origin.y = 0
-        }) { _ in
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                self.hide()
-            }
-        }
-    }
-
-    func hide() {
-        UIView.animate(withDuration: 0.5, animations: {
-            self.frame.origin.y = -60
-        }) { _ in
-            self.removeFromSuperview()
-        }
-    }
-}
 
 
 
@@ -63,6 +17,32 @@ enum LocalTranscriptionError: Error {
 // MARK: - LocalTranscriptionWorkExecutor
 
 final class LocalTranscriptionWorkExecutor: TranscriptionWorkExecutor {
+  
+  func showLocalNotification(with message: String) {
+      let center = UNUserNotificationCenter.current()
+
+      // Create the notification content
+      let content = UNMutableNotificationContent()
+      content.title = "GPT-3 Response"
+      content.body = message
+      content.sound = UNNotificationSound.default
+
+      // Trigger the notification immediately
+      let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+
+      // Create the request
+      let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: trigger)
+
+      // Schedule the notification
+      center.add(request) { (error) in
+          if let error = error {
+              print("Error showing notification: \(error.localizedDescription)")
+          }
+      }
+  }
+  
+  
+  
   var currentWhisperContext: (context: WhisperContextProtocol, modelType: VoiceModelType)? = nil
 
   private let updateTranscription: (_ transcription: Transcription) -> Void
@@ -104,7 +84,7 @@ final class LocalTranscriptionWorkExecutor: TranscriptionWorkExecutor {
     let openAIApiURL = URL(string: "https://api.openai.com/v1/chat/completions")!
       var request = URLRequest(url: openAIApiURL)
       request.httpMethod = "POST"
-      request.addValue("Bearer ", forHTTPHeaderField: "Authorization")
+      request.addValue("Bearer", forHTTPHeaderField: "Authorization")
       request.addValue("application/json", forHTTPHeaderField: "Content-Type")
 
       // Define your prompt
@@ -200,12 +180,7 @@ final class LocalTranscriptionWorkExecutor: TranscriptionWorkExecutor {
               case .success(let content):
                   print("Received response: \(content)")
                 DispatchQueue.main.async {
-                  
-                  if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                     let keyWindow = windowScene.windows.first(where: { $0.isKeyWindow }) {
-                    let banner = NotificationBanner(message: content)
-                    banner.show(on: keyWindow)
-                  }
+                  self.showLocalNotification(with: content)
                 }
 
               case .failure(let error):
