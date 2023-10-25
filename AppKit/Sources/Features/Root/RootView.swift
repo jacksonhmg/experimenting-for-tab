@@ -1,10 +1,23 @@
-
 import Combine
 import ComposableArchitecture
 import Inject
 import SwiftUI
+import UserNotifications
+
 
 // MARK: - RootView
+
+func requestNotificationPermission() {
+    let center = UNUserNotificationCenter.current()
+    center.requestAuthorization(options: [.alert, .sound]) { (granted, error) in
+        if granted {
+            print("Notification permissions granted.")
+        } else {
+            print("Notification permissions denied.")
+        }
+    }
+}
+
 
 struct RootView: View {
   @ObserveInjection var inject
@@ -21,16 +34,18 @@ struct RootView: View {
   }
 
   var body: some View {
-    TabBarContainerView(
-      selectedIndex: viewStore.binding(get: \.rawValue, send: Root.Action.selectTab),
-      screen1: RecordingListScreenView(store: store.scope(state: \.recordingListScreen, action: Root.Action.recordingListScreen)),
-      screen2: RecordScreenView(store: store.scope(state: \.recordScreen, action: Root.Action.recordScreen)),
-      screen3: SettingsScreenView(store: store.scope(state: \.settingsScreen, action: Root.Action.settingsScreen))
-    )
-    .accentColor(.white)
-    .task { viewStore.send(.task) }
-    .enableInjection()
+      TabBarContainerView(
+        selectedIndex: viewStore.binding(get: \.rawValue, send: Root.Action.selectTab),
+        screen1: RecordingListScreenView(store: store.scope(state: \.recordingListScreen, action: Root.Action.recordingListScreen)),
+        screen2: RecordScreenView(store: store.scope(state: \.recordScreen, action: Root.Action.recordScreen)),
+        screen3: SettingsScreenView(store: store.scope(state: \.settingsScreen, action: Root.Action.settingsScreen))
+      )
+      .accentColor(.white)
+      .onAppear(perform: requestNotificationPermission)  // Add this line
+      .task { viewStore.send(.task) }
+      .enableInjection()
   }
+
 }
 
 // MARK: - Root_Previews
