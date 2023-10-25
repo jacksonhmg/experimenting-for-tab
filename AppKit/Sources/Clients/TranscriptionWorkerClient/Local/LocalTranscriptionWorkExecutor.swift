@@ -98,24 +98,28 @@ final class LocalTranscriptionWorkExecutor: TranscriptionWorkExecutor {
   
   func sendTranscriptToGPT(transcript: String, completion: @escaping (Result<String, Error>) -> Void) {
       // Define API URL and request headers
-    let envKeys = loadEnvironmentKeys()
-    let apiKey = envKeys["OPENAI_API_KEY"]
+    //let envKeys = loadEnvironmentKeys()
+    //let apiKey = envKeys["OPENAI_API_KEY"]
 
     let openAIApiURL = URL(string: "https://api.openai.com/v1/chat/completions")!
       var request = URLRequest(url: openAIApiURL)
       request.httpMethod = "POST"
-      request.addValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+      request.addValue("Bearer ", forHTTPHeaderField: "Authorization")
       request.addValue("application/json", forHTTPHeaderField: "Content-Type")
 
       // Define your prompt
     let prompt: [String: Any] = [
         "model": "gpt-3.5-turbo",
         "messages": [
-            ["role": "system", "content": "You are tasked with extracting tasks from conversation."],
+            ["role": "system", "content": "You are tasked with extracting tasks from conversation. You need to respond with helpful questions, advice, help based on large transcriptions you are fed. If there is nothing actionable the user needs help with, do not provide anything"],
             ["role": "user", "content": "I really need to go grocery shopping tomorrow, I'm not sure how I'll get there. How has your day been? Man that's really cool, I miss Florida hey. Yeah I should come soon."],
             ["role": "assistant", "content": "Do you want to set a reminder to get groceries?"],
             ["role": "user", "content": "Yeah I'd love to learn more about quantum computing, I just always forget. Do you have any book recommendations? Oh that's awesome, yeah I'll check that out."],
             ["role": "assistant", "content": "Would you like to learn more about quantum computing?"],
+            ["role": "user", "content": "Wow that's a lovely painting, where did you get it? Seems gorgeous, it must've cost a fortune aye? Wow yeah that's crazy"],
+            ["role": "assistant", "content": "-"],
+            ["role": "user", "content": "That's so interesting, how did you learn about that? What's it called? wikipedia.com? Oh okay wow, I really need to check out that site thank you."],
+            ["role": "assistant", "content": "Do you want to check out wikipedia.com?"],
             ["role": "user", "content": transcript]
         ]
     ]
@@ -195,8 +199,8 @@ final class LocalTranscriptionWorkExecutor: TranscriptionWorkExecutor {
               switch result {
               case .success(let content):
                   print("Received response: \(content)")
-                  let banner = NotificationBanner(message: content)
-                  banner.show(on: UIApplication.shared.windows.first { $0.isKeyWindow }!)
+                  //let banner = NotificationBanner(message: content)
+                  //banner.show(on: UIApplication.shared.windows.first { $0.isKeyWindow }!)
               case .failure(let error):
                   print("Error occurred: \(error.localizedDescription)")
                   // Handle the error, show error message to user, etc.
