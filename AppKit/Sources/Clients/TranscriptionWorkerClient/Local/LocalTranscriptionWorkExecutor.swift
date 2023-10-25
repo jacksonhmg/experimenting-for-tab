@@ -199,8 +199,15 @@ final class LocalTranscriptionWorkExecutor: TranscriptionWorkExecutor {
               switch result {
               case .success(let content):
                   print("Received response: \(content)")
-                  //let banner = NotificationBanner(message: content)
-                  //banner.show(on: UIApplication.shared.windows.first { $0.isKeyWindow }!)
+                DispatchQueue.main.async {
+                  
+                  if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                     let keyWindow = windowScene.windows.first(where: { $0.isKeyWindow }) {
+                    let banner = NotificationBanner(message: content)
+                    banner.show(on: keyWindow)
+                  }
+                }
+
               case .failure(let error):
                   print("Error occurred: \(error.localizedDescription)")
                   // Handle the error, show error message to user, etc.
