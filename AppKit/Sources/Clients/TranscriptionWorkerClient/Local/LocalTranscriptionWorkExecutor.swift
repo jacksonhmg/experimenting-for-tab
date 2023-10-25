@@ -17,7 +17,7 @@ final class LocalTranscriptionWorkExecutor: TranscriptionWorkExecutor {
     self.updateTranscription = updateTranscription
   }
   
-  func sendTranscriptToGPT(transcript: String) {
+  func sendTranscriptToGPT(transcript: String, completion: @escaping (Result<String, Error>) -> Void) {
       // Define API URL and request headers
       let openAIApiURL = URL(string: "https://api.openai.com/v1/engines/gpt-3.5-turbo/completions")!
       var request = URLRequest(url: openAIApiURL)
@@ -45,14 +45,21 @@ final class LocalTranscriptionWorkExecutor: TranscriptionWorkExecutor {
       // Create a task to perform the API call
       let task = URLSession.shared.dataTask(with: request) { (data, response, error) in
           if let error = error {
-              print("Error occurred: \(error.localizedDescription)")
+              DispatchQueue.main.async {
+                  completion(.failure(error))
+              }
               return
           }
           
-          if let data = data {
-              let jsonResponse = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any]
-              if let messageContent = jsonResponse?["choices"] as? [[String: Any]], let firstChoice = messageContent.first, let message = firstChoice["message"] as? [String: String], let content = message["content"] {
-                  print(content)
+          if let data = data, let jsonResponse = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
+             let messageContent = jsonResponse["choices"] as? [[String: Any]], let firstChoice = messageContent.first,
+             let message = firstChoice["message"] as? [String: String], let content = message["content"] {
+              DispatchQueue.main.async {
+                  completion(.success(content))
+              }
+          } else {
+              DispatchQueue.main.async {
+                  completion(.failure(NSError(domain: "com.example.error", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to parse API response"])))
               }
           }
       }
@@ -60,6 +67,7 @@ final class LocalTranscriptionWorkExecutor: TranscriptionWorkExecutor {
       // Start the task
       task.resume()
   }
+
 
 
   func processTask(_ task: TranscriptionTask, updateTask: @escaping (TranscriptionTask) -> Void) async {
@@ -92,7 +100,16 @@ final class LocalTranscriptionWorkExecutor: TranscriptionWorkExecutor {
         case let .finished(segments):
           transcription.segments = segments
           transcription.status = .done(Date())
-          sendTranscriptToGPT(transcription.text)
+          sendTranscriptToGPT(transcript: transcription.text) { result in
+              switch result {
+              case .success(let content):
+                  print("Received response: \(content)")
+                  // Handle the response, update UI, etc.
+              case .failure(let error):
+                  print("Error occurred: \(error.localizedDescription)")
+                  // Handle the error, show error message to user, etc.
+              }
+          }
         }
       }
     } catch {
