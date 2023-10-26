@@ -43,10 +43,13 @@ struct RootView: View {
     viewStore = ViewStore(store) { $0.selectedTab }
   }
 
+  // State variables
+  @State private var buttonText = "Test Notification Detail"
+
   var body: some View {
       NavigationView {
         VStack {
-          Button("Test Notification Detail") {
+          Button(buttonText) {
               showNotificationDetail.toggle()
           }
           
@@ -70,6 +73,7 @@ struct RootView: View {
       }
       .onReceive(NotificationCenter.default.publisher(for: Notification.Name("ShowNotificationDetail"))) { _ in
           print("Received the notification in the view!")
+          buttonText = "New Button Text" // Change this to whatever text you want
 //          showNotificationDetail = true
       }
       
