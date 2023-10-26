@@ -71,10 +71,11 @@ struct RootView: View {
           }
         }
       }
-      .onReceive(NotificationCenter.default.publisher(for: Notification.Name("ShowNotificationDetail"))) { _ in
+      .onReceive(NotificationCenter.default.publisher(for: Notification.Name("ShowNotificationDetail"))) { notification in
           print("Received the notification in the view!")
-          buttonText = "New Button Text" // Change this to whatever text you want
-//          showNotificationDetail = true
+          if let body = notification.userInfo?["body"] as? String {
+              buttonText = body
+          }
       }
       
   }
@@ -106,8 +107,8 @@ class UNUserNotificationCenterDelegateAdaptor: NSObject, UNUserNotificationCente
       print("Tapped the notification!")
       
       // Post a custom notification to indicate that the notification was tapped
-      NotificationCenter.default.post(name: Notification.Name("ShowNotificationDetail"), object: nil)
-      
+    NotificationCenter.default.post(name: Notification.Name("ShowNotificationDetail"), object: nil, userInfo: ["body": body])
+
       completionHandler()
   }
 
