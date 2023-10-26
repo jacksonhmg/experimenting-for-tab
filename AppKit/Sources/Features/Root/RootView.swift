@@ -13,7 +13,7 @@ func sendNotifToGPT(transcript: String, completion: @escaping (Result<String, Er
   let openAIApiURL = URL(string: "https://api.openai.com/v1/chat/completions")!
     var request = URLRequest(url: openAIApiURL)
     request.httpMethod = "POST"
-    request.addValue("Bearer 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", forHTTPHeaderField: "Authorization")
+    request.addValue("Bearer ", forHTTPHeaderField: "Authorization")
     request.addValue("application/json", forHTTPHeaderField: "Content-Type")
 
     // Define your prompt
