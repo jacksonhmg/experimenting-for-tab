@@ -70,7 +70,7 @@ struct RootView: View {
       }
       .onReceive(NotificationCenter.default.publisher(for: Notification.Name("ShowNotificationDetail"))) { _ in
           print("Received the notification in the view!")
-          showNotificationDetail = true
+//          showNotificationDetail = true
       }
       
   }
