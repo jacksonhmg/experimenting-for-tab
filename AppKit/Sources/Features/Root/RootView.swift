@@ -6,8 +6,10 @@ import UserNotifications
 
 
 struct NotificationDetailView: View {
+    let notificationText: String
+
     var body: some View {
-        Text("This is the Notification Detail View")
+        Text(notificationText)
             .padding()
     }
 }
@@ -47,6 +49,7 @@ struct RootView: View {
   @State private var buttonText = "Test Notification Detail"
 
   var body: some View {
+    
       NavigationView {
         VStack {
           Button(buttonText) {
@@ -66,7 +69,7 @@ struct RootView: View {
               .enableInjection()
               
               .sheet(isPresented: $showNotificationDetail) {
-                  NotificationDetailView()
+                NotificationDetailView(notificationText: buttonText)
               }
           }
         }
