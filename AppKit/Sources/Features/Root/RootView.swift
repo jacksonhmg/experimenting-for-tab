@@ -7,19 +7,24 @@ import UserNotifications
 
 // MARK: - RootView
 
-func requestNotificationPermission() {
-    let center = UNUserNotificationCenter.current()
-    center.requestAuthorization(options: [.alert, .sound]) { (granted, error) in
-        if granted {
-            print("Notification permissions granted.")
-        } else {
-            print("Notification permissions denied.")
-        }
-    }
-}
+
 
 
 struct RootView: View {
+  private let notificationDelegate = UNUserNotificationCenterDelegateAdaptor()
+
+      func requestNotificationPermission() {
+          let center = UNUserNotificationCenter.current()
+          center.delegate = notificationDelegate  // Use the stored delegate
+          center.requestAuthorization(options: [.alert, .sound]) { (granted, error) in
+              if granted {
+                  print("Notification permissions granted.")
+              } else {
+                  print("Notification permissions denied.")
+              }
+          }
+      }
+  
   @ObserveInjection var inject
 
   let store: StoreOf<Root>
@@ -47,6 +52,22 @@ struct RootView: View {
   }
 
 }
+
+class UNUserNotificationCenterDelegateAdaptor: NSObject, UNUserNotificationCenterDelegate {
+    
+  func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+      completionHandler([.banner, .sound, .badge])
+  }
+
+    
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        // Handle the tap action here, you can use NotificationCenter or other patterns
+        // to communicate with the rest of your app or simply print something
+        print("Notification tapped!")
+        completionHandler()
+    }
+}
+
 
 // MARK: - Root_Previews
 
