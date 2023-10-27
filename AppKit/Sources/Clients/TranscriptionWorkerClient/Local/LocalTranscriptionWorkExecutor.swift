@@ -20,6 +20,8 @@ final class LocalTranscriptionWorkExecutor: TranscriptionWorkExecutor {
   
   private var OPENAI_API_KEY = ""
   
+  private var arrayOfNo: [String] = []
+  
   
   func showLocalNotification(with message: String) {
       let center = UNUserNotificationCenter.current()
@@ -166,11 +168,11 @@ final class LocalTranscriptionWorkExecutor: TranscriptionWorkExecutor {
         "messages": [
             ["role": "system", "content": "You are an assistant. You are being fed transcriptions that your user is having with others. You also have one really important task. If, at any time, the user says something along the lines of 'No Tab, I don't want help with that' or 'Tab, stop, I don't want any help with my outfit' or 'No Tab, I don't want help with picking this song.' then you need to extract what topic it is they're taking about. ONLY ABSOLUTELY SAY SOMETHING IF YOU ABSOLUTELY KNOW THEY TELL TAB SOMETHING TO STOP DOING. UNDER NO CIRCUMSTANCES SHOULD YOU SAY ANYTHING IF IT'S OTHERWISE. IF IT IS OTHERWISE, JUST SAY '-'."],
             ["role": "user", "content": "No Tab, I don't want help with the Tab logo"],
-            ["role": "assistant", "content": "The user does not want help with the Tab logo"],
+            ["role": "assistant", "content": "the Tab logo"],
             ["role": "user", "content": "Tab, stop, I don't want any help with finding resources for quantum computing."],
-            ["role": "assistant", "content": "The user does not want help with finding resources for quantum computing"],
+            ["role": "assistant", "content": "finding resources for quantum computing"],
             ["role": "user", "content": "Tab, I don't want help with picking my outfit"],
-            ["role": "assistant", "content": "The user does not want help picking their outfit."],
+            ["role": "assistant", "content": "picking their outfit."],
             ["role": "user", "content": "That's so interesting, how did you learn about that? What's it called? wikipedia.com? Oh okay wow, I really need to check out that site thank you."],
             ["role": "assistant", "content": "-"],
             ["role": "user", "content": "I really need to go grocery shopping tomorrow, I'm not sure how I'll get there. How has your day been? Man that's really cool, I miss Florida hey. Yeah I should come soon."],
@@ -289,7 +291,8 @@ final class LocalTranscriptionWorkExecutor: TranscriptionWorkExecutor {
                       }
                   }
                 else {
-                  
+                  self?.arrayOfNo.append(content)
+                  self?.arrayOfNo.forEach { print($0) }
                 }
 
               case .failure(let error):
