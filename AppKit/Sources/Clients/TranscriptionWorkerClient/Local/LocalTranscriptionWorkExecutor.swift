@@ -125,7 +125,7 @@ final class LocalTranscriptionWorkExecutor: TranscriptionWorkExecutor {
         
         if let data = data {
             // Print the raw response data here
-            //print(String(data: data, encoding: .utf8) ?? "Invalid data")
+            print(String(data: data, encoding: .utf8) ?? "Invalid data")
             
             if let jsonResponse = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
                let messageContent = jsonResponse["choices"] as? [[String: Any]], let firstChoice = messageContent.first,
@@ -278,6 +278,7 @@ final class LocalTranscriptionWorkExecutor: TranscriptionWorkExecutor {
                           case .success(let content):
                             DispatchQueue.main.async { [self] in
                                 guard let strongSelf = self else { return }
+                                print("Received response: \(content)")
                                 strongSelf.showLocalNotification(with: content)
                             }
 
@@ -287,6 +288,9 @@ final class LocalTranscriptionWorkExecutor: TranscriptionWorkExecutor {
                           }
                       }
                   }
+                else {
+                  
+                }
 
               case .failure(let error):
                   print("BRUHHHH DIS A FAILURE")

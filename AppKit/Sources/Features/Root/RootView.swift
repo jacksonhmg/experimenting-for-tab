@@ -95,6 +95,7 @@ struct NotificationDetailView: View {
             Text(viewModel.notificationResult)
                 .padding()
             Button("Fetch Content") {
+                print("Fetch Content button clicked")
                 viewModel.fetchNotifContent(from: notificationText)
             }
         }
