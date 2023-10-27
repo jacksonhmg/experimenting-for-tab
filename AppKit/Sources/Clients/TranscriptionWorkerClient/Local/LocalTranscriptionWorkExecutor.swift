@@ -166,7 +166,7 @@ final class LocalTranscriptionWorkExecutor: TranscriptionWorkExecutor {
     let prompt: [String: Any] = [
         "model": "gpt-3.5-turbo",
         "messages": [
-            ["role": "system", "content": "You are an assistant. You are being fed transcriptions that your user is having with others. You also have one really important task. If, at any time, the user says something along the lines of 'No Tab, I don't want help with that' or 'Tab, stop, I don't want any help with my outfit' or 'No Tab, I don't want help with picking this song.' then you need to extract what topic it is they're taking about. ONLY ABSOLUTELY SAY SOMETHING IF YOU ABSOLUTELY KNOW THEY TELL TAB SOMETHING TO STOP DOING. UNDER NO CIRCUMSTANCES SHOULD YOU SAY ANYTHING IF IT'S OTHERWISE. IF IT IS OTHERWISE, JUST SAY '-'."],
+            ["role": "system", "content": "You are an assistant called Tab. You are being fed transcriptions that your user is having with others. You have one really important task. If, at any time, the user says something along the lines of 'No Tab, I don't want help with that' or 'Tab, stop, I don't want any help with my outfit' or 'No Tab, I don't want help with picking this song.' then you need to extract what topic it is they're taking about. So the user will tell you Tab, to stop doing something. If so, extract what they're telling you not to help them with. ONLY ABSOLUTELY SAY SOMETHING IF YOU ABSOLUTELY KNOW THEY TELL TAB SOMETHING TO STOP DOING. UNDER NO CIRCUMSTANCES SHOULD YOU SAY ANYTHING IF IT'S OTHERWISE. IF IT IS OTHERWISE, JUST SAY '-'."],
             ["role": "user", "content": "No Tab, I don't want help with the Tab logo"],
             ["role": "assistant", "content": "the Tab logo"],
             ["role": "user", "content": "Tab, stop, I don't want any help with finding resources for quantum computing."],
@@ -183,6 +183,67 @@ final class LocalTranscriptionWorkExecutor: TranscriptionWorkExecutor {
             ["role": "assistant", "content": "-"],
             ["role": "user", "content": "That's so interesting, how did you learn about that? What's it called? wikipedia.com? Oh okay wow, I really need to check out that site thank you."],
             ["role": "assistant", "content": "-"],
+            ["role": "user", "content": transcript]
+        ]
+    ]
+
+
+    
+      // Convert prompt to JSON data
+      let jsonData = try? JSONSerialization.data(withJSONObject: prompt)
+
+      request.httpBody = jsonData
+
+      // Create a task to perform the API call
+    let task = URLSession.shared.dataTask(with: request) { (data, response, error) in
+        if let error = error {
+            DispatchQueue.main.async {
+                completion(.failure(error))
+            }
+            return
+        }
+        
+        if let data = data {
+            // Print the raw response data here
+            print(String(data: data, encoding: .utf8) ?? "Invalid data")
+            
+            if let jsonResponse = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
+               let messageContent = jsonResponse["choices"] as? [[String: Any]], let firstChoice = messageContent.first,
+               let message = firstChoice["message"] as? [String: String], let content = message["content"] {
+                DispatchQueue.main.async {
+                    completion(.success(content))
+                }
+            } else {
+                DispatchQueue.main.async {
+                    completion(.failure(NSError(domain: "com.example.error", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to parse API response"])))
+                }
+            }
+        }
+    }
+
+
+      // Start the task
+      task.resume()
+  }
+  
+  
+  
+  func checkIfGiveAdvice(transcript: String, arrayOfNo: [String], completion: @escaping (Result<String, Error>) -> Void) {
+      // Define API URL and request headers
+    //let envKeys = loadEnvironmentKeys()
+    //let apiKey = envKeys["OPENAI_API_KEY"]
+
+    let openAIApiURL = URL(string: "https://api.openai.com/v1/chat/completions")!
+      var request = URLRequest(url: openAIApiURL)
+      request.httpMethod = "POST"
+    request.addValue("Bearer \(OPENAI_API_KEY)", forHTTPHeaderField: "Authorization")
+      request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+
+      // Define your prompt
+    let prompt: [String: Any] = [
+        "model": "gpt-3.5-turbo",
+        "messages": [
+          ["role": "system", "content": "you are a helpful assistant. you listen into conversations of your user to see if theres any way you can help. but, there are certain things your user has specified he does not want help with. you are tasked with either helping him, or saying nothing. here is a list of things the user says he does not want help with: \(arrayOfNo.joined(separator: ", ")). So, when you receive the transcript, if the thing the user is talking about is in the list of things he doesn't want help with, say 'don't help', otherwise say 'help'"],
             ["role": "user", "content": transcript]
         ]
     ]
@@ -275,22 +336,44 @@ final class LocalTranscriptionWorkExecutor: TranscriptionWorkExecutor {
                   print("BRUHHH DIS A W")
                   print("Received response: \(content)")
                   if(content == "-") {
-                      self?.sendTranscriptToGPT(transcript: transcription.text) { [weak self] result in
-                          switch result {
-                          case .success(let content):
-                            DispatchQueue.main.async { [self] in
-                                guard let strongSelf = self else { return }
-                                print("Received response: \(content)")
-                                strongSelf.showLocalNotification(with: content)
+                    let transcriptText = transcription.text
+                    
+                    print("feeding in this arrayOfNo : \(self?.arrayOfNo.joined(separator: ", ") ?? "")")
+                    self?.checkIfGiveAdvice(transcript: transcriptText, arrayOfNo: self?.arrayOfNo ?? []) { [weak self] result in
+                        switch result {
+                        case .success(let content):
+                          DispatchQueue.main.async { [self] in
+                              print("Received response: \(content)")
+                            if(content == "help") {
+                              self?.sendTranscriptToGPT(transcript: transcriptText) { [weak self] result in
+                                  switch result {
+                                  case .success(let content):
+                                    DispatchQueue.main.async { [self] in
+                                        guard let strongSelf = self else { return }
+                                        print("Received response: \(content)")
+                                        strongSelf.showLocalNotification(with: content)
+                                    }
+
+
+                                  case .failure(let error):
+                                      print("Error occurred: \(error.localizedDescription)")
+                                  }
+                              }
                             }
-
-
-                          case .failure(let error):
-                              print("Error occurred: \(error.localizedDescription)")
                           }
-                      }
+
+
+                        case .failure(let error):
+                            print("Error occurred: \(error.localizedDescription)")
+                        }
+                    }
+                    
+                    
+                    
+                      
                   }
                 else {
+                  print("decided that its telling Tab not to do something")
                   self?.arrayOfNo.append(content)
                   self?.arrayOfNo.forEach { print($0) }
                 }
