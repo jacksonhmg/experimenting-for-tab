@@ -18,6 +18,9 @@ enum LocalTranscriptionError: Error {
 
 final class LocalTranscriptionWorkExecutor: TranscriptionWorkExecutor {
   
+  private var OPENAI_API_KEY = ""
+  
+  
   func showLocalNotification(with message: String) {
       let center = UNUserNotificationCenter.current()
 
@@ -84,7 +87,7 @@ final class LocalTranscriptionWorkExecutor: TranscriptionWorkExecutor {
     let openAIApiURL = URL(string: "https://api.openai.com/v1/chat/completions")!
       var request = URLRequest(url: openAIApiURL)
       request.httpMethod = "POST"
-      request.addValue("Bearer", forHTTPHeaderField: "Authorization")
+      request.addValue("Bearer \(OPENAI_API_KEY)", forHTTPHeaderField: "Authorization")
       request.addValue("application/json", forHTTPHeaderField: "Content-Type")
 
       // Define your prompt
@@ -142,6 +145,94 @@ final class LocalTranscriptionWorkExecutor: TranscriptionWorkExecutor {
       // Start the task
       task.resume()
   }
+  
+  
+  
+  
+  func checkTabNoFromGPT(transcript: String, completion: @escaping (Result<String, Error>) -> Void) {
+      // Define API URL and request headers
+    //let envKeys = loadEnvironmentKeys()
+    //let apiKey = envKeys["OPENAI_API_KEY"]
+
+    let openAIApiURL = URL(string: "https://api.openai.com/v1/chat/completions")!
+      var request = URLRequest(url: openAIApiURL)
+      request.httpMethod = "POST"
+    request.addValue("Bearer \(OPENAI_API_KEY)", forHTTPHeaderField: "Authorization")
+      request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+
+      // Define your prompt
+    let prompt: [String: Any] = [
+        "model": "gpt-3.5-turbo",
+        "messages": [
+            ["role": "system", "content": "You are an assistant. You are being fed transcriptions that your user is having with others. You also have one really important task. If, at any time, the user says something along the lines of 'No Tab, I don't want help with that' or 'Tab, stop, I don't want any help with my outfit' or 'No Tab, I don't want help with picking this song.' then you need to extract what topic it is they're taking about. ONLY ABSOLUTELY SAY SOMETHING IF YOU ABSOLUTELY KNOW THEY TELL TAB SOMETHING TO STOP DOING. UNDER NO CIRCUMSTANCES SHOULD YOU SAY ANYTHING IF IT'S OTHERWISE. IF IT IS OTHERWISE, JUST SAY '-'."],
+            ["role": "user", "content": "No Tab, I don't want help with the Tab logo"],
+            ["role": "assistant", "content": "The user does not want help with the Tab logo"],
+            ["role": "user", "content": "Tab, stop, I don't want any help with finding resources for quantum computing."],
+            ["role": "assistant", "content": "The user does not want help with finding resources for quantum computing"],
+            ["role": "user", "content": "Tab, I don't want help with picking my outfit"],
+            ["role": "assistant", "content": "The user does not want help picking their outfit."],
+            ["role": "user", "content": "That's so interesting, how did you learn about that? What's it called? wikipedia.com? Oh okay wow, I really need to check out that site thank you."],
+            ["role": "assistant", "content": "-"],
+            ["role": "user", "content": "I really need to go grocery shopping tomorrow, I'm not sure how I'll get there. How has your day been? Man that's really cool, I miss Florida hey. Yeah I should come soon."],
+            ["role": "assistant", "content": "-"],
+            ["role": "user", "content": "Yeah I'd love to learn more about quantum computing, I just always forget. Do you have any book recommendations? Oh that's awesome, yeah I'll check that out."],
+            ["role": "assistant", "content": "-"],
+            ["role": "user", "content": "Wow that's a lovely painting, where did you get it? Seems gorgeous, it must've cost a fortune aye? Wow yeah that's crazy"],
+            ["role": "assistant", "content": "-"],
+            ["role": "user", "content": "That's so interesting, how did you learn about that? What's it called? wikipedia.com? Oh okay wow, I really need to check out that site thank you."],
+            ["role": "assistant", "content": "-"],
+            ["role": "user", "content": transcript]
+        ]
+    ]
+
+
+    
+      // Convert prompt to JSON data
+      let jsonData = try? JSONSerialization.data(withJSONObject: prompt)
+
+      request.httpBody = jsonData
+
+      // Create a task to perform the API call
+    let task = URLSession.shared.dataTask(with: request) { (data, response, error) in
+        if let error = error {
+            DispatchQueue.main.async {
+                completion(.failure(error))
+            }
+            return
+        }
+        
+        if let data = data {
+            // Print the raw response data here
+            print(String(data: data, encoding: .utf8) ?? "Invalid data")
+            
+            if let jsonResponse = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
+               let messageContent = jsonResponse["choices"] as? [[String: Any]], let firstChoice = messageContent.first,
+               let message = firstChoice["message"] as? [String: String], let content = message["content"] {
+                DispatchQueue.main.async {
+                    completion(.success(content))
+                }
+            } else {
+                DispatchQueue.main.async {
+                    completion(.failure(NSError(domain: "com.example.error", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to parse API response"])))
+                }
+            }
+        }
+    }
+
+
+      // Start the task
+      task.resume()
+  }
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
 
 
 
@@ -175,6 +266,18 @@ final class LocalTranscriptionWorkExecutor: TranscriptionWorkExecutor {
         case let .finished(segments):
           transcription.segments = segments
           transcription.status = .done(Date())
+          
+          checkTabNoFromGPT(transcript: transcription.text) { result in
+              switch result {
+              case .success(let content):
+                  print("Received response: \(content)")
+
+              case .failure(let error):
+                  print("Error occurred: \(error.localizedDescription)")
+                  // Handle the error, show error message to user, etc.
+              }
+          }
+          
           sendTranscriptToGPT(transcript: transcription.text) { result in
               switch result {
               case .success(let content):
