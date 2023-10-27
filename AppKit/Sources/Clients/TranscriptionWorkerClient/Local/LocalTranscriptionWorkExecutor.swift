@@ -125,7 +125,7 @@ final class LocalTranscriptionWorkExecutor: TranscriptionWorkExecutor {
         
         if let data = data {
             // Print the raw response data here
-            print(String(data: data, encoding: .utf8) ?? "Invalid data")
+            //print(String(data: data, encoding: .utf8) ?? "Invalid data")
             
             if let jsonResponse = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
                let messageContent = jsonResponse["choices"] as? [[String: Any]], let firstChoice = messageContent.first,
@@ -267,30 +267,34 @@ final class LocalTranscriptionWorkExecutor: TranscriptionWorkExecutor {
           transcription.segments = segments
           transcription.status = .done(Date())
           
-          checkTabNoFromGPT(transcript: transcription.text) { result in
+          checkTabNoFromGPT(transcript: transcription.text) { [weak self] result in
               switch result {
               case .success(let content):
+                  print("BRUHHH DIS A W")
                   print("Received response: \(content)")
+                  if(content == "-") {
+                      self?.sendTranscriptToGPT(transcript: transcription.text) { [weak self] result in
+                          switch result {
+                          case .success(let content):
+                            DispatchQueue.main.async { [self] in
+                                guard let strongSelf = self else { return }
+                                strongSelf.showLocalNotification(with: content)
+                            }
+
+
+                          case .failure(let error):
+                              print("Error occurred: \(error.localizedDescription)")
+                          }
+                      }
+                  }
 
               case .failure(let error):
+                  print("BRUHHHH DIS A FAILURE")
                   print("Error occurred: \(error.localizedDescription)")
-                  // Handle the error, show error message to user, etc.
               }
           }
-          
-          sendTranscriptToGPT(transcript: transcription.text) { result in
-              switch result {
-              case .success(let content):
-                  print("Received response: \(content)")
-                DispatchQueue.main.async {
-                  self.showLocalNotification(with: content)
-                }
 
-              case .failure(let error):
-                  print("Error occurred: \(error.localizedDescription)")
-                  // Handle the error, show error message to user, etc.
-              }
-          }
+        
         }
       }
     } catch {
